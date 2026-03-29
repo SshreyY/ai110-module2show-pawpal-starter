@@ -14,6 +14,64 @@ Before touching any code, I tried to think through what a real user would actual
 
 These three actions basically map to the whole flow: set up → build your task list → get your schedule. That's what shaped my initial class design.
 
+From there I figured out what the actual building blocks (classes) needed to be. I ended up with five:
+
+- **Owner**: holds the user's name and how much free time they have in the day
+- **Pet**: holds the pet's name, species, age, and any special needs
+- **Task**: the individual care items (walk, feed, meds, etc.) with a duration, priority level, and whether it's been completed
+- **Scheduler**: the brain of the app; it takes the task list and available time and figures out what to do and in what order
+- **DailyPlan**: stores the final output: which tasks got scheduled, how much time they use, which got skipped, and a plain-language reason for those choices
+
+I kept Owner and Pet as separate classes even though they're related because the owner's time availability is what the Scheduler actually uses to make decisions. It just made more sense to keep that separate from the pet's personal info.
+
+Here's the UML class diagram I drafted with Claude Code:
+
+```mermaid
+classDiagram
+    class Owner {
+        +String name
+        +int time_available
+        +get_info()
+    }
+    class Pet {
+        +String name
+        +String species
+        +int age
+        +String special_needs
+        +get_info()
+    }
+    class Task {
+        +String name
+        +String category
+        +int duration
+        +String priority
+        +bool completed
+        +mark_complete()
+        +is_completed()
+    }
+    class Scheduler {
+        +List tasks
+        +int time_available
+        +DailyPlan plan
+        +generate_plan()
+        +prioritize_tasks()
+        +fits_in_time()
+    }
+    class DailyPlan {
+        +List scheduled_tasks
+        +int total_time_used
+        +List skipped_tasks
+        +String reasoning
+        +display()
+        +get_summary()
+    }
+
+    Owner "1" --> "1" Pet : has
+    Owner "1" --> "1" Scheduler : uses
+    Scheduler "1" --> "*" Task : schedules
+    Scheduler "1" --> "1" DailyPlan : generates
+```
+
 **b. Design changes**
 
 - Did your design change during implementation?
