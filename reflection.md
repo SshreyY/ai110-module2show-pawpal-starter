@@ -31,6 +31,12 @@ classDiagram
     class Owner {
         +String name
         +int time_available
+        +List~Pet~ pets
+        +add_pet(pet)
+        +remove_pet(pet)
+        +get_all_tasks()
+        +get_tasks_for_pet(name)
+        +get_tasks_by_status(completed)
         +get_info()
     }
     class Pet {
@@ -38,6 +44,10 @@ classDiagram
         +String species
         +int age
         +String special_needs
+        +List~Task~ tasks
+        +add_task(task)
+        +remove_task(task)
+        +get_tasks()
         +get_info()
     }
     class Task {
@@ -45,31 +55,41 @@ classDiagram
         +String category
         +int duration
         +String priority
+        +String frequency
         +bool completed
+        +String time_slot
+        +date due_date
         +mark_complete()
         +is_completed()
+        +next_occurrence()
     }
     class Scheduler {
-        +List tasks
+        +Owner owner
         +int time_available
         +DailyPlan plan
         +generate_plan()
         +prioritize_tasks()
         +fits_in_time()
+        +sort_by_time()$
+        +detect_conflicts()
+        +complete_and_reschedule()
+        +_slot_to_minutes()$
     }
     class DailyPlan {
-        +List scheduled_tasks
+        +List~Task~ scheduled_tasks
         +int total_time_used
-        +List skipped_tasks
+        +List~Task~ skipped_tasks
         +String reasoning
+        +List~String~ conflicts
         +display()
         +get_summary()
     }
 
-    Owner "1" --> "1" Pet : has
+    Owner "1" *-- "*" Pet : owns
+    Pet "1" *-- "*" Task : owns
     Owner "1" --> "1" Scheduler : uses
-    Scheduler "1" --> "*" Task : schedules
-    Scheduler "1" --> "1" DailyPlan : generates
+    Scheduler "1" --> "1" Owner : takes
+    Scheduler "1" ..> "1" DailyPlan : generates
 ```
 
 **b. Design changes**
@@ -106,13 +126,17 @@ That tradeoff is totally reasonable here though this is a daily pet care app, no
 
 **a. How you used AI**
 
-- How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
-- What kinds of prompts or questions were most helpful?
+I used AI as more of a sounding board than a code generator. Before writing anything I'd describe what I was trying to do and ask if my approach made sense. That's how I caught the missing `tasks` list on `Owner` early, because I explained my class structure out loud (basically) and it pointed out that there was no place for tasks to actually live between the UI and the Scheduler.
+
+For the conflict detection math I knew I needed to check if two time windows overlapped but I wasn't sure of the cleanest way to write it. I asked for the formula and got `a_start < b_end and b_start < a_end`, which I then went and verified manually with a few example cases before putting it in the code. That was useful because I understood why it works, not just that it works.
+
+The Streamlit wiring was where I leaned on it most for actual code. Session state stuff is repetitive and I already knew what I wanted the UI to do, so having it fill in the boilerplate while I focused on the structure saved a lot of time.
 
 **b. Judgment and verification**
 
-- Describe one moment where you did not accept an AI suggestion as-is.
-- How did you evaluate or verify what the AI suggested?
+At one point AI suggested using `itertools.combinations(tasks, 2)` for the conflict detection loop instead of the manual `enumerate` + `tasks[i+1:]` approach I had. I looked at both and decided to keep mine. The combinations version is shorter but I had to look up what it does. The manual version is longer but anyone can read it and know exactly what's happening. I ran both against the same inputs to make sure they matched, then kept the one I could actually explain.
+
+There were also a few times where the suggested code would've worked but wasn't quite what I wanted. Like early on it kept putting validation logic inside the model classes and I had to keep steering it back to putting that in the UI instead, since the whole point was to keep the backend clean.
 
 ---
 
@@ -120,13 +144,17 @@ That tradeoff is totally reasonable here though this is a daily pet care app, no
 
 **a. What you tested**
 
-- What behaviors did you test?
-- Why were these tests important?
+I started with the four most obvious behaviors: marking a task complete, adding tasks to a pet, enforcing the time limit, and making sure high-priority tasks come first. Those are the things the whole app depends on so if those break, nothing else matters.
+
+After that I wrote tests for the Phase 4 features as I built them, so sorting, filtering, recurring tasks, and conflict detection each got tested right when I finished the code for them. That made it way easier to catch bugs immediately instead of hunting them down later.
+
+The edge cases came last. I went through the app as if I were a user who didn't know what they were doing and asked "what would break?" No pets added yet, all tasks too long to fit, a task that uses exactly the last available minute, blank names, duplicate pets. Those turned out to be some of the most useful tests because a few of them actually changed how I thought about where validation should live.
 
 **b. Confidence**
 
-- How confident are you that your scheduler works correctly?
-- What edge cases would you test next if you had more time?
+Pretty confident in the backend. Every real path through the scheduler has a test and the edge cases are covered. I'd give it a 5/5 for the logic layer.
+
+The UI is less certain because I only tested it by hand. I know the "Add task" disabled state works and the remove buttons work, but those aren't in the automated suite. If something broke there I might not catch it until I ran the app. That's the main thing I'd add more tests for if I had time.
 
 ---
 
@@ -134,12 +162,14 @@ That tradeoff is totally reasonable here though this is a daily pet care app, no
 
 **a. What went well**
 
-- What part of this project are you most satisfied with?
+Keeping `pawpal_system.py` completely separate from Streamlit was the best call I made. I didn't plan it that way on purpose at first, it just made sense not to mix UI code into the logic. But it paid off a lot when I got to testing because I could test the whole scheduling layer without needing a browser open, and when I wired up the UI in Phase 3 it was mostly just calling methods I already trusted.
 
 **b. What you would improve**
 
-- If you had another iteration, what would you improve or redesign?
+I'd add an edit feature. Right now if you make a typo in a task name or pick the wrong duration, you have to delete it and add it again. That's annoying and I noticed it while testing manually. It's not hard to add, I just ran out of time.
+
+I'd also rethink how much the `Owner` class does. It ended up holding pets, handling cross-pet queries, and being the thing you pass into the Scheduler. It works but it feels like too much for one class. I'd probably split out a separate session-level object to handle the aggregation stuff.
 
 **c. Key takeaway**
 
-- What is one important thing you learned about designing systems or working with AI on this project?
+The UML diagram matters more than I thought going in. I wrote `Owner "1" --> "1" Pet` early on, meaning one owner has one pet. That seemed fine at the time but the minute I wanted to support multiple pets I had to update the Owner class, the Scheduler, the tests, and the UI all at once. If I had thought through "will this ever need multiple pets?" for even two minutes, I would've written `"1" *-- "*"` from the start and it would've been a non-issue. It's not about over-engineering, it's just about actually reading what you're building before you build it.

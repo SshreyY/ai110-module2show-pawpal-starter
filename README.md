@@ -1,26 +1,24 @@
-# PawPal+ (Module 2 Project)
+# PawPal+
 
-You are building **PawPal+**, a Streamlit app that helps a pet owner plan care tasks for their pet.
+**PawPal+** is a Streamlit app that helps a pet owner plan daily care tasks for their pets. You enter your pets, add tasks with durations and priorities, and it builds a schedule that fits within your available time.
 
-## Scenario
+## Features
 
-A busy pet owner needs help staying consistent with pet care. They want an assistant that can:
+- **Priority scheduling**: high-priority tasks like meds and feeding always get scheduled first. Ties within the same priority level go to the shorter task so more fits in the day.
+- **Time slots**: each scheduled task gets a real `HH:MM` start time starting from 8:00 AM, chained by duration so nothing overlaps.
+- **Sorted schedule display**: the schedule always shows up in chronological order.
+- **Task filtering**: you can view tasks by pet or filter by Pending, Completed, or All so you know what's left for each animal.
+- **Recurring tasks**: mark a daily or weekly task done and the next one gets added automatically. "As needed" tasks just get marked complete and that's it.
+- **Conflict detection**: if two tasks end up overlapping, the app shows a red error at the top of the schedule before you follow it.
+- **Time budget check**: if a new task you're trying to add won't fit in the time you have left, the Add Task button grays out and tells you why.
+- **Multi-pet support**: you can add multiple pets and tasks get assigned per pet.
+- **Remove pets and tasks**: both can be removed from the UI at any time.
 
-- Track pet care tasks (walks, feeding, meds, enrichment, grooming, etc.)
-- Consider constraints (time available, priority, owner preferences)
-- Produce a daily plan and explain why it chose that plan
+## 📸 Demo
 
-Your job is to design the system first (UML), then implement the logic in Python, then connect it to the Streamlit UI.
-
-## What you will build
-
-Your final app should:
-
-- Let a user enter basic owner + pet info
-- Let a user add/edit tasks (duration + priority at minimum)
-- Generate a daily schedule/plan based on constraints and priorities
-- Display the plan clearly (and ideally explain the reasoning)
-- Include tests for the most important scheduling behaviors
+![Screenshot 1](screenshots/screenshot1.png)
+![Screenshot 2](screenshots/screenshot2.png)
+![Screenshot 3](screenshots/screenshot3.png)
 
 ## Getting started
 
@@ -62,7 +60,7 @@ Run the full test suite with:
 python -m pytest
 ```
 
-The suite has 19 tests across five areas:
+The suite has 23 tests across five areas:
 
 - **Core task behavior**: marking tasks complete, adding tasks to a pet, verifying completion status
 - **Scheduling logic**: priority ordering (high before low), time limit enforcement, exact-boundary fits, empty task lists, and the case where nothing fits at all
