@@ -164,3 +164,107 @@ def test_detect_conflicts_no_warning_for_back_to_back_tasks():
 
     conflicts = scheduler.detect_conflicts([bath, lunch])
     assert conflicts == []
+
+
+# --- UI Input Edge Cases ---
+
+def test_generate_plan_with_no_pets_returns_empty_schedule():
+    # user hits "Generate" before adding any pets
+    owner = Owner("Jordan", 60)
+    plan = Scheduler(owner).generate_plan()
+    assert plan.scheduled_tasks == []
+    assert plan.total_time_used == 0
+
+
+def test_add_duplicate_pet_names_are_both_stored():
+    # user submits the "Add pet" form twice with the same name —
+    # the app doesn't deduplicate, so both end up in the list
+    owner = Owner("Jordan", 60)
+    owner.add_pet(Pet("Mochi", "dog", 3))
+    owner.add_pet(Pet("Mochi", "cat", 2))   # same name, different species
+    assert len(owner.pets) == 2
+
+
+def test_empty_pet_name_is_stored_as_given():
+    # user submits the form with a blank name field —
+    # the class stores whatever string it receives (input validation is the UI's job)
+    owner = Owner("Jordan", 60)
+    owner.add_pet(Pet("", "dog", 3))
+    assert owner.pets[0].name == ""
+
+
+def test_zero_duration_task_always_fits():
+    # a task with duration 0 should always be scheduled regardless of time left
+    owner = Owner("Jordan", 0)   # no time at all
+    pet = Pet("Mochi", "dog", 3)
+    pet.add_task(Task("Quick check", "meds", 0, "high"))
+    owner.add_pet(pet)
+    plan = Scheduler(owner).generate_plan()
+    assert len(plan.scheduled_tasks) == 1
+
+
+# --- Edge Cases ---
+
+def test_generate_plan_with_no_tasks_returns_empty_schedule():
+    owner = Owner("Jordan", 60)
+    owner.add_pet(Pet("Mochi", "dog", 3))   # pet exists but has zero tasks
+
+    plan = Scheduler(owner).generate_plan()
+
+    assert plan.scheduled_tasks == []
+    assert plan.skipped_tasks == []
+    assert plan.total_time_used == 0
+    assert "nothing was skipped" in plan.reasoning
+
+
+def test_generate_plan_skips_all_tasks_when_none_fit():
+    owner = Owner("Jordan", 10)             # only 10 min available
+    pet = Pet("Mochi", "dog", 3)
+    pet.add_task(Task("Long walk",  "walk", 45, "high"))
+    pet.add_task(Task("Grooming",   "grooming", 30, "medium"))
+    owner.add_pet(pet)
+
+    plan = Scheduler(owner).generate_plan()
+
+    assert plan.scheduled_tasks == []
+    assert len(plan.skipped_tasks) == 2
+    assert plan.total_time_used == 0
+
+
+def test_task_that_exactly_fills_remaining_time_is_scheduled():
+    owner = Owner("Jordan", 20)             # exactly 20 min
+    pet = Pet("Mochi", "dog", 3)
+    pet.add_task(Task("Walk", "walk", 20, "high"))   # duration == time_available
+    owner.add_pet(pet)
+
+    plan = Scheduler(owner).generate_plan()
+
+    assert len(plan.scheduled_tasks) == 1
+    assert plan.skipped_tasks == []
+    assert plan.total_time_used == 20
+
+
+def test_complete_and_reschedule_as_needed_task_adds_nothing():
+    owner = Owner("Jordan", 60)
+    pet = Pet("Mochi", "dog", 3)
+    task = Task("Vet visit", "meds", 60, "high", frequency="as needed")
+    pet.add_task(task)
+    owner.add_pet(pet)
+
+    result = Scheduler(owner).complete_and_reschedule(task, pet)
+
+    assert task.is_completed() == True
+    assert result is None
+    assert len(pet.get_tasks()) == 1        # no new task was added
+
+
+def test_detect_conflicts_flags_identical_start_times():
+    scheduler = Scheduler(Owner("Alex", 60))
+    walk = Task("Walk", "walk", 20, "high",   time_slot="09:00")
+    meds = Task("Meds", "meds", 10, "high",   time_slot="09:00")  # same start time
+
+    conflicts = scheduler.detect_conflicts([walk, meds])
+
+    assert len(conflicts) == 1
+    assert "Walk" in conflicts[0]
+    assert "Meds" in conflicts[0]

@@ -4,38 +4,7 @@ from pawpal_system import Task, Pet, Owner, Scheduler
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 
 st.title("🐾 PawPal+")
-
-st.markdown(
-    """
-Welcome to the PawPal+ starter app.
-
-This file is intentionally thin. It gives you a working Streamlit app so you can start quickly,
-but **it does not implement the project logic**. Your job is to design the system and build it.
-
-Use this app as your interactive demo once your backend classes/functions exist.
-"""
-)
-
-with st.expander("Scenario", expanded=True):
-    st.markdown(
-        """
-**PawPal+** is a pet care planning assistant. It helps a pet owner plan care tasks
-for their pet(s) based on constraints like time, priority, and preferences.
-
-You will design and implement the scheduling logic and connect it to this Streamlit UI.
-"""
-    )
-
-with st.expander("What you need to build", expanded=True):
-    st.markdown(
-        """
-At minimum, your system should:
-- Represent pet care tasks (what needs to happen, how long it takes, priority)
-- Represent the pet and the owner (basic info and preferences)
-- Build a plan/schedule for a day that chooses and orders tasks based on constraints
-- Explain the plan (why each task was chosen and when it happens)
-"""
-    )
+st.caption("Your daily pet care planner — add your pets, build a task list, and generate a schedule.")
 
 st.divider()
 
@@ -87,18 +56,21 @@ if pet_names:
     col1, col2, col3 = st.columns(3)
     with col1:
         task_title = st.text_input("Task title", value="Morning walk")
+        category = st.selectbox("Category", ["walk", "feed", "meds", "grooming", "enrichment", "other"])
     with col2:
         duration = st.number_input("Duration (minutes)", min_value=1, max_value=240, value=20)
+        frequency = st.selectbox("Frequency", ["daily", "weekly", "as needed"])
     with col3:
         priority = st.selectbox("Priority", ["low", "medium", "high"], index=2)
 
     if st.button("Add task"):
         # Find the matching Pet object and call add_task() on it
         target_pet = next(p for p in st.session_state.owner.pets if p.name == target_pet_name)
-        new_task = Task(task_title, "general", int(duration), priority)
+        new_task = Task(task_title, category, int(duration), priority, frequency)
         target_pet.add_task(new_task)
         st.session_state.tasks.append(
-            {"pet": target_pet_name, "task": task_title, "duration": int(duration), "priority": priority}
+            {"pet": target_pet_name, "task": task_title, "category": category,
+             "duration (min)": int(duration), "priority": priority, "frequency": frequency}
         )
         st.success(f"Added '{task_title}' to {target_pet_name}.")
 
@@ -124,8 +96,8 @@ if st.button("Generate schedule"):
 
         st.markdown("### Scheduled Tasks")
         if plan.scheduled_tasks:
-            for task in plan.scheduled_tasks:
-                st.write(f"- **{task.name}** — {task.duration} min ({task.priority} priority)")
+            for task in Scheduler.sort_by_time(plan.scheduled_tasks):
+                st.write(f"- `{task.time_slot}` **{task.name}** — {task.duration} min · {task.priority} priority · {task.frequency}")
             st.info(f"Total time used: {plan.total_time_used} / {st.session_state.owner.time_available} min")
         else:
             st.write("Nothing fit in the available time.")
@@ -134,6 +106,11 @@ if st.button("Generate schedule"):
             st.markdown("### Skipped Tasks")
             for task in plan.skipped_tasks:
                 st.write(f"- {task.name} ({task.duration} min, {task.priority} priority)")
+
+        if plan.conflicts:
+            st.markdown("### ⚠️ Conflicts Detected")
+            for warning in plan.conflicts:
+                st.warning(warning)
 
         st.markdown("### Reasoning")
         st.write(plan.reasoning)

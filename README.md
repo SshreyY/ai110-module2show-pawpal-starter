@@ -53,3 +53,23 @@ Phase 4 extended the core scheduler with four algorithmic improvements:
 **Recurring tasks**: `Task.next_occurrence()` uses Python's `timedelta` to compute the next due date: `+1 day` for `"daily"` tasks and `+7 days` for `"weekly"` ones. `"as needed"` tasks return `None` and don't auto-recur. `Scheduler.complete_and_reschedule()` wraps this and it marks the task done and immediately adds the next copy to the pet's task list so the owner never has to re-enter it manually.
 
 **Conflict detection**: `Scheduler.detect_conflicts()` checks every pair of scheduled tasks for overlapping time windows using the standard interval overlap test (`a_start < b_end and b_start < a_end`). It returns plain-language warning strings instead of raising exceptions, so the app can surface the issue to the user without crashing.
+
+## Testing PawPal+
+
+Run the full test suite with:
+
+```bash
+python -m pytest
+```
+
+The suite has 19 tests across five areas:
+
+- **Core task behavior**: marking tasks complete, adding tasks to a pet, verifying completion status
+- **Scheduling logic**: priority ordering (high before low), time limit enforcement, exact-boundary fits, empty task lists, and the case where nothing fits at all
+- **Sorting**: `sort_by_time()` returns tasks in chronological order; `generate_plan()` assigns sequential `HH:MM` start times from 08:00
+- **Recurring tasks**: daily tasks recur +1 day, weekly tasks recur +7 days, "as needed" tasks return `None` and add nothing; `complete_and_reschedule()` handles all three cases
+- **Conflict detection**: overlapping windows are flagged, back-to-back tasks are not, identical start times are caught as the degenerate overlap case
+
+**Confidence level: ★★★★★**
+
+The scheduler's core loop, all Phase 4 features, and UI input edge cases are covered. The suite tests happy paths and edge cases including: empty task lists, no pets added, all tasks exceeding available time, the exact-boundary fit, zero-duration tasks, duplicate pet names, and blank name strings. Input validation is intentionally left to the UI layer because the logic layer stores whatever it receives, and the tests document that behavior explicitly.
