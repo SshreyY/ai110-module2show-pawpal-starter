@@ -41,3 +41,15 @@ pip install -r requirements.txt
 5. Add tests to verify key behaviors.
 6. Connect your logic to the Streamlit UI in `app.py`.
 7. Refine UML so it matches what you actually built.
+
+## Smarter Scheduling
+
+Phase 4 extended the core scheduler with four algorithmic improvements:
+
+**Time-of-day sorting**: Every scheduled task gets an actual `HH:MM` start time, calculated by chaining durations forward from 8:00 AM. `Scheduler.sort_by_time()` uses a lambda on the time string to sort tasks in chronological order, which works because zero-padded `"HH:MM"` strings sort correctly without converting to numbers.
+
+**Task filtering**: `Owner.get_tasks_for_pet(name)` returns only the tasks belonging to a specific pet. `Owner.get_tasks_by_status(completed)` filters across all pets by completion state. Both methods make it easy to answer questions like "what does Mochi still have left today?" without touching unrelated data.
+
+**Recurring tasks**: `Task.next_occurrence()` uses Python's `timedelta` to compute the next due date: `+1 day` for `"daily"` tasks and `+7 days` for `"weekly"` ones. `"as needed"` tasks return `None` and don't auto-recur. `Scheduler.complete_and_reschedule()` wraps this and it marks the task done and immediately adds the next copy to the pet's task list so the owner never has to re-enter it manually.
+
+**Conflict detection**: `Scheduler.detect_conflicts()` checks every pair of scheduled tasks for overlapping time windows using the standard interval overlap test (`a_start < b_end and b_start < a_end`). It returns plain-language warning strings instead of raising exceptions, so the app can surface the issue to the user without crashing.

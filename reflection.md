@@ -86,13 +86,19 @@ Second, there was no place to actually store the task list. Tasks were going str
 
 **a. Constraints and priorities**
 
-- What constraints does your scheduler consider (for example: time, priority, preferences)?
-- How did you decide which constraints mattered most?
+The scheduler considers two constraints: **priority level** (high / medium / low) and **available time** (how many minutes the owner has in the day). Priority drives the ordering. High-priority tasks always get considered first. Time availability acts as the hard cutoff if a task doesn't fit in the remaining time, it gets skipped no matter how important it is.
+
+I decided priority mattered most because that's what a real pet owner would care about first. If your dog needs medication (high priority), that has to happen before an enrichment play session (low priority). Time is secondary but non-negotiable because there's no way to schedule a 45-minute walk if only 20 minutes are left.
+
+Within the same priority level, the scheduler breaks ties by duration (shorter tasks first). That's a practical call: fitting more tasks into the day is better than leaving gaps just to run longer ones.
 
 **b. Tradeoffs**
 
-- Describe one tradeoff your scheduler makes.
-- Why is that tradeoff reasonable for this scenario?
+The biggest tradeoff is that my scheduler is **greedy and doesn't backtrack**. It sorts everything by priority + duration, then walks the list once and grabs whatever fits. That's fast and simple, but it can produce a suboptimal result in edge cases.
+
+For example, imagine the owner has 50 minutes left and there's one high-priority task that takes 45 minutes and one medium-priority task that takes 30 minutes. The greedy approach schedules the high-priority task (40 min used), then tries the medium (only 5 min left. doesn't fit), and skips it. But what if the opposite order would have worked? The high-priority task would still get scheduled on the next run. The greedy approach doesn't even look at that possibility.
+
+That tradeoff is totally reasonable here though this is a daily pet care app, not a flight scheduling system. Pet owners don't need a mathematically perfect schedule, they need a fast, explainable one. "I did high-priority things first and fit in whatever else I could" is something a real person would actually say. A backtracking algorithm would be slower, harder to explain, and way overkill for 5–10 tasks a day.
 
 ---
 
