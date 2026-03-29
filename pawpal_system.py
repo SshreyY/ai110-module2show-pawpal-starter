@@ -29,9 +29,17 @@ class Task:
 
 
 class Owner:
-    def __init__(self, name: str, time_available: int):
+    def __init__(self, name: str, time_available: int, pet: Pet):
         self.name = name
         self.time_available = time_available  # total free minutes in the day
+        self.pet = pet
+        self.tasks: List[Task] = []
+
+    def add_task(self, task: Task) -> None:
+        pass
+
+    def remove_task(self, task: Task) -> None:
+        pass
 
     def get_info(self) -> str:
         pass
